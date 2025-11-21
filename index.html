@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Category Translator</title>
+    <style>
+        /* --- Color Variables --- */
+        :root {
+            /* Light Mode (Clean & Standard) */
+            --bg-color: #f8fafc;
+            --container-bg: #ffffff;
+            --text-color: #334155;
+            --label-color: #0f172a;
+            --heading-color: #2563eb;
+            --border-color: #e2e8f0;
+            --input-bg: #ffffff;
+            --input-border: #cbd5e1;
+            --output-bg: #eff6ff;
+            --link-color: #2563eb;
+            --status-color: #64748b;
+            --footer-color: #94a3b8;
+        }
+
+        /* Dark Mode (The "Slate Blue" Look) */
+        body.dark-mode {
+            --bg-color: #0f172a;       /* Deep Slate Blue Background */
+            --container-bg: #1e293b;   /* Lighter Slate for Card */
+            --text-color: #e2e8f0;     /* Soft White Text */
+            --label-color: #f8fafc;    /* Bright White Labels */
+            --heading-color: #60a5fa;  /* Light Blue Heading */
+            --border-color: #334155;   /* Subtle Borders */
+            --input-bg: #334155;       /* Input Box Color */
+            --input-border: #475569;
+            --output-bg: #1e293b;      /* Blend output with container */
+            --link-color: #60a5fa;
+            --status-color: #94a3b8;
+            --footer-color: #64748b;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+            display: flex;
+            flex-direction: column;
+            min-height: 95vh;
+            /* INCREASED BASE FONT SIZE */
+            font-size: 16px; 
+        }
+
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        h1 { 
+            color: var(--heading-color); 
+            margin: 0; 
+            font-size: 32px; /* Increased */
+            font-weight: 700;
+        }
+
+        /* Theme Toggle Button */
+        .theme-toggle {
+            background: var(--container-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px; /* Increased */
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .theme-toggle:hover { 
+            background-color: var(--input-bg); 
+            border-color: var(--link-color);
+        }
+
+        .container {
+            background: var(--container-bg);
+            padding: 35px; /* Slightly more padding */
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border: 1px solid var(--border-color);
+            flex: 1;
+        }
+        
+        p.description {
+            color: var(--status-color);
+            margin-bottom: 25px;
+            font-size: 17px; /* Increased */
+            line-height: 1.5;
+        }
+
+        label { 
+            font-weight: 600; 
+            display: block; 
+            margin-top: 25px; 
+            margin-bottom: 10px; 
+            color: var(--label-color);
+            font-size: 16px; /* Increased */
+        }
+
+        textarea {
+            width: 100%;
+            padding: 14px; /* More padding inside boxes */
+            border: 1px solid var(--input-border);
+            border-radius: 8px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            box-sizing: border-box;
+            resize: vertical;
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            font-size: 16px; /* Increased input text size */
+            line-height: 1.5;
+            transition: border-color 0.2s;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: var(--heading-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        #inputCategories { height: 140px; }
+
+        .output-wrapper { position: relative; margin-top: 5px; }
+        
+        #outputRaw { 
+            height: 160px; 
+            background-color: var(--output-bg); 
+            border-color: var(--input-border); 
+            padding-right: 70px; 
+        }
+        
+        .copy-btn-overlay {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: var(--container-bg);
+            color: var(--link-color);
+            border: 1px solid var(--link-color);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px; /* Increased */
+            font-weight: bold;
+            opacity: 0.9;
+            transition: all 0.2s;
+        }
+        .copy-btn-overlay:hover {
+            background-color: var(--link-color);
+            color: #fff;
+            opacity: 1;
+        }
+
+        .primary-btn { 
+            background-color: #2563eb; 
+            color: white; 
+            border: none; 
+            padding: 14px 28px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-size: 17px; /* Increased button text */
+            font-weight: 600;
+            margin-top: 20px;
+            width: 100%;
+            transition: background-color 0.2s;
+        }
+        .primary-btn:hover { background-color: #1d4ed8; }
+        .primary-btn:disabled { background-color: var(--border-color); color: var(--status-color); cursor: not-allowed; }
+        
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 35px; border-color: var(--border-color); }
+        th, td { text-align: left; padding: 14px; border-bottom: 1px solid var(--border-color); }
+        th { background-color: var(--bg-color); font-weight: 600; color: var(--label-color); font-size: 16px; }
+        td { font-size: 16px; /* Increased table text */ }
+        a { color: var(--link-color); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        
+        .status { margin-top: 15px; color: var(--status-color); font-size: 15px; text-align: center; }
+        .missing { color: #ef4444; font-style: italic; }
+
+        /* Footer Styling */
+        footer {
+            margin-top: 50px;
+            padding: 20px;
+            text-align: center;
+            font-size: 15px; /* Increased */
+            color: var(--footer-color);
+            border-top: 1px solid var(--border-color);
+        }
+        footer a { color: var(--link-color); text-decoration: none; font-weight: 500; }
+        footer .heart { color: #ef4444; }
+        footer .github-icon {
+            display: inline-block;
+            vertical-align: middle;
+            width: 18px; /* Increased icon size */
+            height: 18px;
+            fill: var(--footer-color);
+            margin-right: 5px;
+        }
+        footer a:hover .github-icon { fill: var(--link-color); }
+    </style>
+</head>
+<body>
+
+<div class="header-row">
+    <h1>Category Translator</h1>
+    <button class="theme-toggle" onclick="toggleTheme()">🌙 Mode</button>
+</div>
+
+<div class="container">
+    <p class="description">Paste English Wikipedia categories below to find their Punjabi equivalents.</p>
+    
+    <label for="inputCategories">English Categories</label>
+    <textarea id="inputCategories" placeholder="[[Category:History of Punjab]]&#10;Category:Sikhism&#10;Computer science"></textarea>
+    
+    <button id="btnCheck" class="primary-btn" onclick="processCategories()">Get Punjabi Links</button>
+    <div id="status" class="status"></div>
+
+    <label for="outputRaw">Punjabi Categories (Result)</label>
+    <div class="output-wrapper">
+        <textarea id="outputRaw" readonly placeholder="Results will appear here for easy copying..."></textarea>
+        <button class="copy-btn-overlay" onclick="copyOutput()" title="Copy to Clipboard">Copy</button>
+    </div>
+
+    <table id="resultsTable" style="display:none;">
+        <thead>
+            <tr>
+                <th>English Category</th>
+                <th>Punjabi Category Link</th>
+            </tr>
+        </thead>
+        <tbody id="resultsBody"></tbody>
+    </table>
+</div>
+
+<footer>
+    Made with <span class="heart">❤</span> by <a href="https://meta.wikimedia.org/wiki/User:Kuldeepburjbhalaike" target="_blank">Kuldeep</a>
+    &nbsp;|&nbsp; 
+    <a href="https://github.com/Kuldeepburjbhalaike/Category-Translator" target="_blank">
+        <svg class="github-icon" viewBox="0 0 16 16" version="1.1" aria-hidden="true"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>
+        Source Code
+    </a>
+</footer>
+
+<script>
+    // --- Theme Logic (Auto-Detect System Preference) ---
+    function toggleTheme() {
+        const body = document.body;
+        const btn = document.querySelector('.theme-toggle');
+        body.classList.toggle('dark-mode');
+        
+        if (body.classList.contains('dark-mode')) {
+            btn.textContent = "☀ Light Mode";
+            localStorage.setItem('theme', 'dark');
+        } else {
+            btn.textContent = "🌙 Dark Mode";
+            localStorage.setItem('theme', 'light');
+        }
+    }
+
+    // INITIALIZE: Check User Save -> Then Check System Preference
+    const savedTheme = localStorage.getItem('theme');
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    if (savedTheme === 'dark') {
+        document.body.classList.add('dark-mode');
+        document.querySelector('.theme-toggle').textContent = "☀ Light Mode";
+    } else if (savedTheme === 'light') {
+        document.body.classList.remove('dark-mode');
+        document.querySelector('.theme-toggle').textContent = "🌙 Dark Mode";
+    } else if (systemPrefersDark) {
+        document.body.classList.add('dark-mode');
+        document.querySelector('.theme-toggle').textContent = "☀ Light Mode";
+    }
+
+    // --- Processing Logic ---
+    async function processCategories() {
+        const input = document.getElementById('inputCategories').value;
+        const statusDiv = document.getElementById('status');
+        const tbody = document.getElementById('resultsBody');
+        const table = document.getElementById('resultsTable');
+        const outputBox = document.getElementById('outputRaw');
+        const btn = document.getElementById('btnCheck');
+
+        tbody.innerHTML = '';
+        outputBox.value = '';
+        table.style.display = 'none';
+        
+        if (!input.trim()) {
+            alert("Please enter at least one category.");
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = "Searching...";
+        statusDiv.textContent = "";
+        
+        let rawLines = input.split('\n');
+        let categories = rawLines.map(line => {
+            return line.replace(/\[\[|\]\]/g, '').trim();
+        }).filter(c => c.length > 0 && c !== ':'); 
+
+        const batchSize = 50;
+        
+        try {
+            for (let i = 0; i < categories.length; i += batchSize) {
+                const batch = categories.slice(i, i + batchSize);
+                await fetchBatch(batch);
+            }
+            statusDiv.textContent = `Done! Found ${categories.length} items.`;
+        } catch (e) {
+            statusDiv.textContent = "An error occurred.";
+        }
+        
+        table.style.display = 'table';
+        btn.disabled = false;
+        btn.textContent = "Get Punjabi Links";
+    }
+
+    async function fetchBatch(batch) {
+        const outputBox = document.getElementById('outputRaw');
+        
+        const formattedTitles = batch.map(t => t.toLowerCase().startsWith('category:') ? t : `Category:${t}`);
+        const titlesParam = formattedTitles.join('|');
+
+        const url = `https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&prop=langlinks&lllang=pa&llprop=url&titles=${encodeURIComponent(titlesParam)}`;
+
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            const pages = data.query?.pages || {};
+
+            Object.values(pages).forEach(page => {
+                if (!page.title) return;
+
+                const row = document.createElement('tr');
+                const enCell = document.createElement('td');
+                const paCell = document.createElement('td');
+
+                enCell.textContent = page.title;
+
+                if (page.langlinks && page.langlinks.length > 0) {
+                    const paLink = page.langlinks[0];
+                    const paTitle = paLink['*'];
+                    
+                    const link = document.createElement('a');
+                    link.href = paLink.url;
+                    link.target = "_blank";
+                    link.textContent = paTitle;
+                    paCell.appendChild(link);
+
+                    outputBox.value += `[[${paTitle}]]\n`;
+
+                } else {
+                    paCell.textContent = "Not found on pa-wiki";
+                    paCell.className = "missing";
+                }
+
+                row.appendChild(enCell);
+                row.appendChild(paCell);
+                document.getElementById('resultsBody').appendChild(row);
+            });
+
+        } catch (error) {
+            console.error("Error fetching data:", error);
+            outputBox.value += `Error processing batch\n`;
+        }
+    }
+
+    function copyOutput() {
+        const copyText = document.getElementById("outputRaw");
+        const btn = document.querySelector(".copy-btn-overlay");
+        
+        copyText.select();
+        copyText.setSelectionRange(0, 99999);
+        navigator.clipboard.writeText(copyText.value).then(() => {
+            const originalText = btn.textContent;
+            btn.textContent = "Copied!";
+            btn.style.backgroundColor = "#2563eb"; 
+            btn.style.color = "white";
+            btn.style.borderColor = "#2563eb";
+            
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.style.backgroundColor = ""; 
+                btn.style.color = "";
+                btn.style.borderColor = "";
+            }, 2000);
+        });
+    }
+</script>
+
+</body>
+</html>
