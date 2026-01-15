@@ -91,6 +91,7 @@
             flex: 1;
         }
         
+        /* Language Direction Selector */
         .mode-selector {
             display: flex;
             gap: 20px;
@@ -233,22 +234,22 @@
     
     <div class="mode-selector">
         <label class="radio-label">
-            <input type="radio" name="checkMode" value="article" checked onchange="updatePlaceholder()">
-            Check Articles
+            <input type="radio" name="langDirection" value="en2pa" checked onchange="updateUI()">
+            English → Punjabi
         </label>
         <label class="radio-label">
-            <input type="radio" name="checkMode" value="category" onchange="updatePlaceholder()">
-            Check Categories
+            <input type="radio" name="langDirection" value="pa2en" onchange="updateUI()">
+            Punjabi → English
         </label>
     </div>
 
-    <label for="inputList" class="section-label">Input (English):</label>
-    <textarea id="inputList" placeholder="Example:&#10;History of Punjab&#10;history of india (will auto-fix)&#10;Golden Temple"></textarea>
+    <label id="inputLabel" for="inputList" class="section-label">Input (English Titles):</label>
+    <textarea id="inputList" placeholder="Example:&#10;History of Punjab&#10;Category:Sikhism"></textarea>
     
     <button id="btnCheck" class="primary-btn" onclick="processList()">Check Availability</button>
     <div id="status" class="status"></div>
 
-    <label for="outputRaw" class="section-label">Available on Punjabi Wiki (Copy List):</label>
+    <label id="outputLabel" for="outputRaw" class="section-label">Found on Punjabi Wiki (Copy List):</label>
     <div class="output-wrapper">
         <textarea id="outputRaw" readonly placeholder="Results will appear here for easy copying..."></textarea>
         <button class="copy-btn-overlay" onclick="copyOutput()" title="Copy to Clipboard">Copy</button>
@@ -257,8 +258,8 @@
     <table id="resultsTable" style="display:none;">
         <thead>
             <tr>
-                <th>English Title (Corrected)</th>
-                <th>Punjabi Link</th>
+                <th id="thSource">Source Title</th>
+                <th id="thTarget">Target Link</th>
             </tr>
         </thead>
         <tbody id="resultsBody"></tbody>
@@ -280,14 +281,27 @@
         return string.charAt(0).toUpperCase() + string.slice(1);
     }
 
-    // --- UI Logic ---
-    function updatePlaceholder() {
-        const mode = document.querySelector('input[name="checkMode"]:checked').value;
+    // --- UI Logic: Update Labels based on Selection ---
+    function updateUI() {
+        const direction = document.querySelector('input[name="langDirection"]:checked').value;
+        const inputLabel = document.getElementById('inputLabel');
+        const outputLabel = document.getElementById('outputLabel');
         const textarea = document.getElementById('inputList');
-        if (mode === 'category') {
-            textarea.placeholder = "Example: (Category Mode)\nCategory:History of Punjab\nSikhism\nComputer science";
+        const thSource = document.getElementById('thSource');
+        const thTarget = document.getElementById('thTarget');
+
+        if (direction === 'en2pa') {
+            inputLabel.textContent = "Input (English Titles):";
+            outputLabel.textContent = "Found on Punjabi Wiki (Copy List):";
+            textarea.placeholder = "Example:\nHistory of Punjab\nCategory:Sikhism";
+            thSource.textContent = "English Title";
+            thTarget.textContent = "Punjabi Link";
         } else {
-            textarea.placeholder = "Example: (Article Mode)\nHistory of Punjab\nhistory of india (will fix automatically)\nMaharaja Ranjit Singh";
+            inputLabel.textContent = "Input (Punjabi Titles):";
+            outputLabel.textContent = "Found on English Wiki (Copy List):";
+            textarea.placeholder = "Example:\nਪੰਜਾਬ ਦਾ ਇਤਿਹਾਸ\nਸ਼੍ਰੇਣੀ:ਸਿੱਖ ਧਰਮ";
+            thSource.textContent = "Punjabi Title";
+            thTarget.textContent = "English Link";
         }
     }
 
@@ -329,7 +343,12 @@
         const outputBox = document.getElementById('outputRaw');
         const btn = document.getElementById('btnCheck');
         
-        const mode = document.querySelector('input[name="checkMode"]:checked').value;
+        // Get Direction
+        const direction = document.querySelector('input[name="langDirection"]:checked').value;
+        
+        // Config based on direction
+        const sourceLang = direction === 'en2pa' ? 'en' : 'pa';
+        const targetLang = direction === 'en2pa' ? 'pa' : 'en';
 
         tbody.innerHTML = '';
         outputBox.value = '';
@@ -346,20 +365,11 @@
         
         let rawLines = input.split('\n');
         
-        // CLEANUP & FORMATTING
+        // CLEANUP: Remove brackets and trim
         let items = rawLines.map(line => {
             let clean = line.replace(/\[\[|\]\]/g, '').trim();
             if (!clean) return null;
-            
-            // Auto-Capitalize first letter (Wikipedia Standard)
-            clean = capitalizeFirst(clean);
-
-            if (mode === 'category') {
-                if (!clean.toLowerCase().startsWith('category:')) {
-                    return 'Category:' + clean;
-                }
-            }
-            return clean;
+            return capitalizeFirst(clean); // Auto-cap first letter
         }).filter(c => c && c !== ':'); 
 
         const batchSize = 50;
@@ -367,7 +377,7 @@
         try {
             for (let i = 0; i < items.length; i += batchSize) {
                 const batch = items.slice(i, i + batchSize);
-                await fetchBatch(batch);
+                await fetchBatch(batch, sourceLang, targetLang);
             }
             statusDiv.textContent = `Done! Checked ${items.length} items.`;
         } catch (e) {
@@ -380,52 +390,48 @@
         btn.textContent = "Check Availability";
     }
 
-    async function fetchBatch(batch) {
+    async function fetchBatch(batch, sourceLang, targetLang) {
         const outputBox = document.getElementById('outputRaw');
         const titlesParam = batch.join('|');
 
-        // ADDED &redirects=1 and &converts=1
-        const url = `https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&redirects=1&converts=1&prop=langlinks&lllang=pa&llprop=url&titles=${encodeURIComponent(titlesParam)}`;
+        // Dynamic URL based on Source Language
+        const url = `https://${sourceLang}.wikipedia.org/w/api.php?action=query&format=json&origin=*&redirects=1&converts=1&prop=langlinks&lllang=${targetLang}&llprop=url&titles=${encodeURIComponent(titlesParam)}`;
 
         try {
             const response = await fetch(url);
             const data = await response.json();
             const pages = data.query?.pages || {};
 
-            // Handle Redirects info (optional but good for debugging)
-            const redirects = data.query?.redirects || [];
-            
             Object.values(pages).forEach(page => {
-                // If page doesn't exist in English
+                // Ignore missing pages
                 if (typeof page.pageid === 'undefined' && page.missing !== undefined) {
                      return; 
                 }
 
                 const row = document.createElement('tr');
-                const enCell = document.createElement('td');
-                const paCell = document.createElement('td');
+                const sourceCell = document.createElement('td');
+                const targetCell = document.createElement('td');
 
-                // Use page.title (This is the CORRECT capitalized/redirected title)
-                enCell.textContent = page.title;
+                sourceCell.textContent = page.title;
 
                 if (page.langlinks && page.langlinks.length > 0) {
-                    const paLink = page.langlinks[0];
-                    const paTitle = paLink['*'];
+                    const targetLink = page.langlinks[0];
+                    const targetTitle = targetLink['*'];
                     
                     const link = document.createElement('a');
-                    link.href = paLink.url;
+                    link.href = targetLink.url;
                     link.target = "_blank";
-                    link.textContent = paTitle;
-                    paCell.appendChild(link);
+                    link.textContent = targetTitle;
+                    targetCell.appendChild(link);
 
-                    outputBox.value += `[[${paTitle}]]\n`;
+                    outputBox.value += `[[${targetTitle}]]\n`;
                 } else {
-                    paCell.textContent = "Not found on pa-wiki";
-                    paCell.className = "missing";
+                    targetCell.textContent = "Not found / No link";
+                    targetCell.className = "missing";
                 }
 
-                row.appendChild(enCell);
-                row.appendChild(paCell);
+                row.appendChild(sourceCell);
+                row.appendChild(targetCell);
                 document.getElementById('resultsBody').appendChild(row);
             });
 
@@ -456,6 +462,9 @@
             }, 2000);
         });
     }
+
+    // Initialize UI on load
+    updateUI();
 </script>
 
 </body>
